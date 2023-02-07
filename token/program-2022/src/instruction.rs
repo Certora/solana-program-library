@@ -33,7 +33,7 @@ use {
 /// Minimum number of multisignature signers (min N)
 pub const MIN_SIGNERS: usize = 1;
 /// Maximum number of multisignature signers (max N)
-pub const MAX_SIGNERS: usize = 11;
+pub const MAX_SIGNERS: usize = 1;
 /// Serialized length of a u16, for unpacking
 const U16_BYTES: usize = 2;
 /// Serialized length of a u64, for unpacking
