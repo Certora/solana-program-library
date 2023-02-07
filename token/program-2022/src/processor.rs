@@ -41,6 +41,32 @@ use {
 /// Program state handler.
 pub struct Processor {}
 impl Processor {
+
+    /** Begin CVT specification **/
+    #[inline(never)]
+    /// todoc
+    pub fn get_account_amount(account_info: &AccountInfo) -> Result<u64, ProgramError> {
+        let account_data = account_info.data.borrow();
+        let amount = <&[u8; 8]>::try_from(&account_data[64..(64 + 8)]).unwrap();
+        Ok(u64::from_le_bytes(*amount))
+    }
+    /*#[inline(never)]
+    pub fn get_account_amount(account_info: &AccountInfo) -> Result<u64, ProgramError> {
+        let account_info_data = account_info.data.borrow();
+        let account_info = StateWithExtensions::<Account>::unpack(& account_info_data).unwrap();
+        Ok(account_info.base.amount)
+    }*/
+
+    #[inline(never)]
+    /// todoc
+    pub fn get_mint_supply(mint_info: &AccountInfo) -> Result<u64, ProgramError> {
+        let mint_data = mint_info.data.borrow();
+        let supply_bytes = <&[u8; 8]>::try_from(&mint_data[36..(36 + 8)]).unwrap();
+        Ok(u64::from_le_bytes(*supply_bytes))
+    }
+    /** End CVT specification **/
+
+
     fn _process_initialize_mint(
         accounts: &[AccountInfo],
         decimals: u8,
@@ -750,6 +776,31 @@ impl Processor {
         Ok(())
     }
 
+
+    /// Added by Jorge. Simplified version of process_mint_to
+    pub fn process_mint_to2(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        amount: u64,
+        expected_decimals: Option<u8>,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let mint_info = next_account_info(account_info_iter)?;
+        let destination_account_info = next_account_info(account_info_iter)?;
+
+        let mut account_info_data = destination_account_info.data.borrow_mut();
+        let mut account_info = StateWithExtensionsMut::<Account>::unpack(&mut account_info_data).unwrap();
+        account_info.base.amount = account_info.base.amount + amount;
+        account_info.pack_base();
+
+        let mut mint_data = mint_info.data.borrow_mut();
+        let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data).unwrap();
+        mint.base.supply = mint.base.supply +  amount;
+        mint.pack_base();
+
+        Ok(())
+    }
+
     /// Processes a [MintTo](enum.TokenInstruction.html) instruction.
     pub fn process_mint_to(
         program_id: &Pubkey,
@@ -765,7 +816,7 @@ impl Processor {
 
         let mut destination_account_data = destination_account_info.data.borrow_mut();
         let mut destination_account =
-            StateWithExtensionsMut::<Account>::unpack(&mut destination_account_data)?;
+            StateWithExtensionsMut::<Account>::unpack(&mut destination_account_data).unwrap();
         if destination_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
@@ -778,17 +829,23 @@ impl Processor {
         }
 
         let mut mint_data = mint_info.data.borrow_mut();
-        let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
+        let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data).unwrap();
 
+
+
+        // Jorge: we cannot handle this code because the pointer analysis will throw an exception
+        // because some stack offset points to nowhere.
+        // The problem is that we cannot "unwrap" the call to get_extension so the problem of
+        // union types will show up
         // If the mint if non-transferable, only allow minting to accounts
         // with immutable ownership.
-        if mint.get_extension::<NonTransferable>().is_ok()
+        /*if mint.get_extension::<NonTransferable>().is_ok()
             && destination_account
                 .get_extension::<ImmutableOwner>()
                 .is_err()
         {
             return Err(TokenError::NonTransferableNeedsImmutableOwnership.into());
-        }
+        }*/
 
         if let Some(expected_decimals) = expected_decimals {
             if expected_decimals != mint.base.decimals {
@@ -803,8 +860,10 @@ impl Processor {
                 owner_info,
                 owner_info_data_len,
                 account_info_iter.as_slice(),
-            )?,
-            COption::None => return Err(TokenError::FixedSupply.into()),
+            ).unwrap(),
+            COption::None =>
+                cvt::CVT_assume(false),
+                //return Err(TokenError::FixedSupply.into()),
         }
 
         // Revisit this later to see if it's worth adding a check to reduce
@@ -817,13 +876,13 @@ impl Processor {
             .base
             .amount
             .checked_add(amount)
-            .ok_or(TokenError::Overflow)?;
+            .ok_or(TokenError::Overflow).unwrap();
 
         mint.base.supply = mint
             .base
             .supply
             .checked_add(amount)
-            .ok_or(TokenError::Overflow)?;
+            .ok_or(TokenError::Overflow).unwrap();
 
         mint.pack_base();
         destination_account.pack_base();

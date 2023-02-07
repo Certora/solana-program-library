@@ -222,9 +222,9 @@ impl IsInitialized for Multisig {
     }
 }
 impl Pack for Multisig {
-    const LEN: usize = 355;
+    const LEN: usize = 3 + 32 * MAX_SIGNERS;
     fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
-        let src = array_ref![src, 0, 355];
+        let src = array_ref![src, 0, Multisig::LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (m, n, is_initialized, signers_flat) = array_refs![src, 1, 1, 1, 32 * MAX_SIGNERS];
         let mut result = Multisig {
@@ -243,7 +243,7 @@ impl Pack for Multisig {
         Ok(result)
     }
     fn pack_into_slice(&self, dst: &mut [u8]) {
-        let dst = array_mut_ref![dst, 0, 355];
+        let dst = array_mut_ref![dst, 0, Multisig::LEN];
         #[allow(clippy::ptr_offset_with_cast)]
         let (m, n, is_initialized, signers_flat) = mut_array_refs![dst, 1, 1, 1, 32 * MAX_SIGNERS];
         *m = [self.m];

@@ -33,6 +33,9 @@ use {
 #[cfg(feature = "serde-traits")]
 use serde::{Deserialize, Serialize};
 
+use cvt::{cvt_deterministic_usize};
+use cvt;
+
 /// Confidential Transfer extension
 pub mod confidential_transfer;
 /// CPI Guard extension
@@ -93,6 +96,33 @@ struct TlvIndices {
     pub length_start: usize,
     pub value_start: usize,
 }
+
+/// Return deterministically an arbitrary start of the extension
+cvt_deterministic_usize!(cvt_start_extension, CVT_START_EXTENSION);
+
+/// Stub needed by CVT
+#[inline(never)]
+fn get_extension_indices<S: BaseState, V: Extension>(
+    tlv_data: &[u8],
+    _init: bool,
+) -> Result<TlvIndices, ProgramError> {
+    let type_start: usize = cvt::CVT_nondet_usize();
+    let length_start: usize = cvt::CVT_nondet_usize();
+    let value_start: usize = cvt_start_extension();
+
+    let tlv_start_index = BASE_ACCOUNT_LENGTH.saturating_sub(S::LEN).
+                                                     saturating_add(size_of::<AccountType>());
+    cvt::CVT_assume(type_start >= tlv_start_index);
+    cvt::CVT_assume(length_start > type_start);
+    cvt::CVT_assume(value_start > length_start);
+    cvt::CVT_assume(value_start < tlv_data.len());
+    let tlv_indices =
+        TlvIndices {type_start,
+            length_start,
+            value_start};
+    return Ok(tlv_indices)
+}
+/*
 fn get_extension_indices<V: Extension>(
     tlv_data: &[u8],
     init: bool,
@@ -130,6 +160,7 @@ fn get_extension_indices<V: Extension>(
     }
     Err(ProgramError::InvalidAccountData)
 }
+*/
 
 fn get_extension_types(tlv_data: &[u8]) -> Result<Vec<ExtensionType>, ProgramError> {
     let mut extension_types = vec![];
@@ -228,7 +259,7 @@ fn type_and_tlv_indices<S: BaseState>(
         // check padding is all zeroes
         let tlv_start_index = account_type_index.saturating_add(size_of::<AccountType>());
         if rest_input.len() <= tlv_start_index {
-            return Err(ProgramError::InvalidAccountData);
+           return Err(ProgramError::InvalidAccountData);
         }
         if rest_input[..account_type_index] != vec![0; account_type_index] {
             Err(ProgramError::InvalidAccountData)
@@ -248,17 +279,20 @@ fn is_initialized_account(input: &[u8]) -> Result<bool, ProgramError> {
     Ok(input[ACCOUNT_INITIALIZED_INDEX] != 0)
 }
 
+#[inline(never)] // added by CVT
 fn get_extension<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&V, ProgramError> {
     if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
         return Err(ProgramError::InvalidAccountData);
     }
+    // Changes needed by CVT:
+    // the calls to get_extension_indices and pod_from_bytes should return Err instead of panic.
     let TlvIndices {
         type_start: _,
         length_start,
         value_start,
-    } = get_extension_indices::<V>(tlv_data, false)?;
+    } = get_extension_indices::<S, V>(tlv_data, false).unwrap(); // CVT
     // get_extension_indices has checked that tlv_data is long enough to include these indices
-    let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
+    let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start]).unwrap(); // CVT
     let value_end = value_start.saturating_add(usize::from(*length));
     if tlv_data.len() < value_end {
         return Err(ProgramError::InvalidAccountData);
@@ -340,7 +374,7 @@ impl<'data, S: BaseState> StateWithExtensions<'data, S> {
     pub fn unpack(input: &'data [u8]) -> Result<Self, ProgramError> {
         check_min_len_and_not_multisig(input, S::LEN)?;
         let (base_data, rest) = input.split_at(S::LEN);
-        let base = S::unpack(base_data)?;
+        let base = S::unpack(base_data).unwrap(); // added by CVT
         if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
             // type_and_tlv_indices() checks that returned indexes are within range
             let account_type = AccountType::try_from(rest[account_type_index])
@@ -383,7 +417,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     pub fn unpack(input: &'data mut [u8]) -> Result<Self, ProgramError> {
         check_min_len_and_not_multisig(input, S::LEN)?;
         let (base_data, rest) = input.split_at_mut(S::LEN);
-        let base = S::unpack(base_data)?;
+        let base = S::unpack(base_data).unwrap(); // added by CVT
         if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
             // type_and_tlv_indices() checks that returned indexes are within range
             let account_type = AccountType::try_from(rest[account_type_index])
@@ -447,26 +481,29 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         }
     }
 
+    
     /// Unpack a portion of the TLV data as the desired type that allows modifying the type
+    #[inline(never)] // added by CVT
     pub fn get_extension_mut<V: Extension>(&mut self) -> Result<&mut V, ProgramError> {
         if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
-            return Err(ProgramError::InvalidAccountData);
+           return Err(ProgramError::InvalidAccountData);
         }
         let TlvIndices {
             type_start,
             length_start,
             value_start,
-        } = get_extension_indices::<V>(self.tlv_data, false)?;
+        } = get_extension_indices::<S, V>(self.tlv_data, false).unwrap(); // CVT
 
         if self.tlv_data[type_start..].len() < V::TYPE.get_tlv_len() {
             return Err(ProgramError::InvalidAccountData);
         }
-        let length = pod_from_bytes::<Length>(&self.tlv_data[length_start..value_start])?;
+        let length = pod_from_bytes::<Length>(&self.tlv_data[length_start..value_start]).unwrap(); // CVT
         let value_end = value_start.saturating_add(usize::from(*length));
         pod_from_bytes_mut::<V>(&mut self.tlv_data[value_start..value_end])
     }
 
     /// Packs base state data into the base data portion
+    #[inline(never)] // added by CVT
     pub fn pack_base(&mut self) {
         S::pack_into_slice(&self.base, self.base_data);
     }
@@ -486,7 +523,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             type_start,
             length_start,
             value_start,
-        } = get_extension_indices::<V>(self.tlv_data, true)?;
+        } = get_extension_indices::<S, V>(self.tlv_data, true).unwrap(); // CVT
 
         if self.tlv_data[type_start..].len() < V::TYPE.get_tlv_len() {
             return Err(ProgramError::InvalidAccountData);

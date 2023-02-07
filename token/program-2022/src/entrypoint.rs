@@ -5,10 +5,12 @@ use {
     solana_program::{
         account_info::AccountInfo, entrypoint, entrypoint::ProgramResult,
         program_error::PrintProgramError, pubkey::Pubkey,
-    },
+    }
 };
+use crate::extension::BaseStateWithExtensions;
 
 entrypoint!(process_instruction);
+
 fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -21,3 +23,4 @@ fn process_instruction(
     }
     Ok(())
 }
+

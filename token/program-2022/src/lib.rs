@@ -1,6 +1,6 @@
 #![allow(clippy::integer_arithmetic)]
 #![deny(missing_docs)]
-#![cfg_attr(not(test), forbid(unsafe_code))]
+//#![cfg_attr(not(test), forbid(unsafe_code))]
 
 //! An ERC20-like Token program for the Solana blockchain
 
@@ -14,7 +14,7 @@ pub mod processor;
 #[cfg(feature = "serde-traits")]
 pub mod serialization;
 pub mod state;
-
+pub mod certora;
 #[cfg(not(feature = "no-entrypoint"))]
 mod entrypoint;
 

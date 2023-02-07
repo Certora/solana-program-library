@@ -33,6 +33,10 @@ use {
     solana_zk_token_sdk::zk_token_elgamal::ops as syscall,
 };
 
+/// CVT stubs for using proof arguments
+pub mod cvt_confidential;
+use cvt;
+
 /// Decodes the zero-knowledge proof instruction associated with the token instruction.
 ///
 /// `ConfigureAccount`, `EmptyAccount`, `Withdraw`, `Transfer`, `WithdrawWithheldTokensFromMint`,
@@ -215,7 +219,7 @@ fn process_approve_account(accounts: &[AccountInfo]) -> ProgramResult {
 }
 
 /// Processes an [EmptyAccount] instruction.
-fn process_empty_account(
+pub fn process_empty_account(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     proof_instruction_offset: i64,
@@ -228,7 +232,7 @@ fn process_empty_account(
 
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
-    let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data)?;
+    let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data).unwrap();
 
     Processor::validate_owner(
         program_id,
@@ -239,7 +243,7 @@ fn process_empty_account(
     )?;
 
     let mut confidential_transfer_account =
-        token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
+        token_account.get_extension_mut::<ConfidentialTransferAccount>().unwrap();
 
     // An account can be closed only if the remaining balance is zero. This means that for the
     // confidential extension account, the ciphertexts associated with the following components
@@ -256,12 +260,17 @@ fn process_empty_account(
     // For the available balance, it is not possible to deduce whether the ciphertext encrypts zero
     // or not by simply inspecting the ciphertext bytes (otherwise, this would violate
     // confidentiality). The available balance is verified using a zero-knowledge proof.
+
+    // Changes for CVT
+    /*
     let zkp_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
     let proof_data = decode_proof_instruction::<CloseAccountData>(
         ProofInstruction::VerifyCloseAccount,
         &zkp_instruction,
-    )?;
+    )?;*/
+    let proof_data = cvt_confidential::decode_proof_close_account();
+
     // Check that the encryption public key and ciphertext associated with the confidential
     // extension account are consistent with those that were actually used to generate the zkp.
     if confidential_transfer_account.encryption_pubkey != proof_data.pubkey {
@@ -276,6 +285,7 @@ fn process_empty_account(
 
     // check that all balances are all-zero ciphertexts
     confidential_transfer_account.closable()?;
+
 
     Ok(())
 }
@@ -376,7 +386,7 @@ fn verify_and_split_deposit_amount(amount: u64) -> Result<(u64, u64), TokenError
 
 /// Processes a [Withdraw] instruction.
 #[cfg(feature = "zk-ops")]
-fn process_withdraw(
+pub fn process_withdraw(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     amount: u64,
@@ -393,7 +403,7 @@ fn process_withdraw(
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mint_info.data.borrow_mut();
-    let mint = StateWithExtensions::<Mint>::unpack(mint_data)?;
+    let mint = StateWithExtensions::<Mint>::unpack(mint_data).unwrap();
 
     if expected_decimals != mint.base.decimals {
         return Err(TokenError::MintDecimalsMismatch.into());
@@ -405,7 +415,7 @@ fn process_withdraw(
 
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
-    let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data)?;
+    let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data).unwrap();
 
     Processor::validate_owner(
         program_id,
@@ -427,17 +437,20 @@ fn process_withdraw(
     assert!(!token_account.base.is_native());
 
     let mut confidential_transfer_account =
-        token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
+        token_account.get_extension_mut::<ConfidentialTransferAccount>().unwrap();
     confidential_transfer_account.valid_as_source()?;
 
     // Zero-knowledge proof certifies that the account has enough available balance to withdraw the
     // amount.
+    /* Changes needed by CVT
     let zkp_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
     let proof_data = decode_proof_instruction::<WithdrawData>(
         ProofInstruction::VerifyWithdraw,
         &zkp_instruction,
-    )?;
+    )?;*/
+    let proof_data = cvt_confidential::decode_proof_withdraw_account();
+
     // Check that the encryption public key associated with the confidential extension is
     // consistent with the public key that was actually used to generate the zkp.
     if confidential_transfer_account.encryption_pubkey != proof_data.pubkey {
@@ -446,9 +459,11 @@ fn process_withdraw(
 
     // Prevent unnecessary ciphertext arithmetic syscalls if the withdraw amount is zero
     if amount > 0 {
-        confidential_transfer_account.available_balance =
+        /* CVT has problems with this code. This is code is irrelevant to the assertion we want to prove*/
+       /*confidential_transfer_account.available_balance =
             syscall::subtract_from(&confidential_transfer_account.available_balance, amount)
-                .ok_or(ProgramError::InvalidInstructionData)?;
+                .ok_or(ProgramError::InvalidInstructionData).unwrap();
+        */
     }
     // Check that the final available balance ciphertext is consistent with the actual ciphertext
     // for which the zero-knowledge proof was generated for.
@@ -457,6 +472,7 @@ fn process_withdraw(
     }
 
     confidential_transfer_account.decryptable_available_balance = new_decryptable_available_balance;
+
     token_account.base.amount = token_account
         .base
         .amount
