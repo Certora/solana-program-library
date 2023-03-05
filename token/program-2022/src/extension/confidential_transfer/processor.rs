@@ -33,6 +33,10 @@ use {
     solana_zk_token_sdk::zk_token_elgamal::ops as syscall,
 };
 
+/// CVT stubs for using proof arguments
+pub mod cvt_confidential;
+use cvt;
+
 /// Decodes the zero-knowledge proof instruction associated with the token instruction.
 ///
 /// `ConfigureAccount`, `EmptyAccount`, `Withdraw`, `Transfer`, `WithdrawWithheldTokensFromMint`,
@@ -215,7 +219,7 @@ fn process_approve_account(accounts: &[AccountInfo]) -> ProgramResult {
 }
 
 /// Processes an [EmptyAccount] instruction.
-fn process_empty_account(
+pub fn process_empty_account(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     proof_instruction_offset: i64,
@@ -256,12 +260,17 @@ fn process_empty_account(
     // For the available balance, it is not possible to deduce whether the ciphertext encrypts zero
     // or not by simply inspecting the ciphertext bytes (otherwise, this would violate
     // confidentiality). The available balance is verified using a zero-knowledge proof.
+
+    // Changes for CVT
+    /*
     let zkp_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
     let proof_data = decode_proof_instruction::<CloseAccountData>(
         ProofInstruction::VerifyCloseAccount,
         &zkp_instruction,
-    )?;
+    )?;*/
+    let proof_data = cvt_confidential::decode_proof_close_account();
+
     // Check that the encryption public key and ciphertext associated with the confidential
     // extension account are consistent with those that were actually used to generate the zkp.
     if confidential_transfer_account.encryption_pubkey != proof_data.pubkey {
@@ -276,6 +285,10 @@ fn process_empty_account(
 
     // check that all balances are all-zero ciphertexts
     confidential_transfer_account.closable()?;
+
+
+    // Added for CVT
+    cvt::CVT_assert(confidential_transfer_account.encryption_pubkey == cvt_confidential::get_proof_close_account().pubkey);
 
     Ok(())
 }

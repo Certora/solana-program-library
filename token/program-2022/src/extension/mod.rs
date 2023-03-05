@@ -33,6 +33,8 @@ use {
 #[cfg(feature = "serde-traits")]
 use serde::{Deserialize, Serialize};
 
+use cvt;
+
 /// Confidential Transfer extension
 pub mod confidential_transfer;
 /// CPI Guard extension
@@ -93,6 +95,23 @@ struct TlvIndices {
     pub length_start: usize,
     pub value_start: usize,
 }
+
+/// Stub needed by CVT
+#[inline(never)]
+fn get_extension_indices<V: Extension>(
+    _tlv_data: &[u8],
+    _init: bool,
+) -> Result<TlvIndices, ProgramError> {
+    let type_start: usize = cvt::CVT_nondet_usize();
+    let length_start: usize = cvt::CVT_nondet_usize();
+    let value_start: usize = cvt::CVT_nondet_usize();
+    let tlv_indices =
+        TlvIndices {type_start,
+            length_start,
+            value_start};
+    return Ok(tlv_indices)
+}
+/*
 fn get_extension_indices<V: Extension>(
     tlv_data: &[u8],
     init: bool,
@@ -130,6 +149,7 @@ fn get_extension_indices<V: Extension>(
     }
     Err(ProgramError::InvalidAccountData)
 }
+*/
 
 fn get_extension_types(tlv_data: &[u8]) -> Result<Vec<ExtensionType>, ProgramError> {
     let mut extension_types = vec![];
@@ -450,14 +470,13 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     /// Unpack a portion of the TLV data as the desired type that allows modifying the type
     pub fn get_extension_mut<V: Extension>(&mut self) -> Result<&mut V, ProgramError> {
         if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
-            return Err(ProgramError::InvalidAccountData);
+           return Err(ProgramError::InvalidAccountData);
         }
         let TlvIndices {
             type_start,
             length_start,
             value_start,
         } = get_extension_indices::<V>(self.tlv_data, false)?;
-
         if self.tlv_data[type_start..].len() < V::TYPE.get_tlv_len() {
             return Err(ProgramError::InvalidAccountData);
         }
