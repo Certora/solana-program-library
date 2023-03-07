@@ -248,7 +248,7 @@ fn type_and_tlv_indices<S: BaseState>(
         // check padding is all zeroes
         let tlv_start_index = account_type_index.saturating_add(size_of::<AccountType>());
         if rest_input.len() <= tlv_start_index {
-            return Err(ProgramError::InvalidAccountData);
+           return Err(ProgramError::InvalidAccountData);
         }
         if rest_input[..account_type_index] != vec![0; account_type_index] {
             Err(ProgramError::InvalidAccountData)
@@ -272,13 +272,16 @@ fn get_extension<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&V, Prog
     if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
         return Err(ProgramError::InvalidAccountData);
     }
+    // Changes needed by CVT:
+    // the calls to get_extension_indices and pod_from_bytes should return Err instead of panic.
+
     let TlvIndices {
         type_start: _,
         length_start,
         value_start,
-    } = get_extension_indices::<V>(tlv_data, false)?;
+    } = get_extension_indices::<V>(tlv_data, false).unwrap(); // CVT
     // get_extension_indices has checked that tlv_data is long enough to include these indices
-    let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
+    let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start]).unwrap(); // CVT
     let value_end = value_start.saturating_add(usize::from(*length));
     if tlv_data.len() < value_end {
         return Err(ProgramError::InvalidAccountData);

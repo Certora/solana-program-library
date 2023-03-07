@@ -389,7 +389,7 @@ fn verify_and_split_deposit_amount(amount: u64) -> Result<(u64, u64), TokenError
 
 /// Processes a [Withdraw] instruction.
 #[cfg(feature = "zk-ops")]
-fn process_withdraw(
+pub fn process_withdraw(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     amount: u64,
@@ -445,12 +445,15 @@ fn process_withdraw(
 
     // Zero-knowledge proof certifies that the account has enough available balance to withdraw the
     // amount.
+    /* Changes needed by CVT
     let zkp_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
     let proof_data = decode_proof_instruction::<WithdrawData>(
         ProofInstruction::VerifyWithdraw,
         &zkp_instruction,
-    )?;
+    )?;*/
+    let proof_data = cvt_confidential::decode_proof_withdraw_account();
+
     // Check that the encryption public key associated with the confidential extension is
     // consistent with the public key that was actually used to generate the zkp.
     if confidential_transfer_account.encryption_pubkey != proof_data.pubkey {
@@ -470,6 +473,9 @@ fn process_withdraw(
     }
 
     confidential_transfer_account.decryptable_available_balance = new_decryptable_available_balance;
+
+    cvt::CVT_assert(confidential_transfer_account.encryption_pubkey == cvt_confidential::get_proof_withdraw_account().pubkey);
+
     token_account.base.amount = token_account
         .base
         .amount
