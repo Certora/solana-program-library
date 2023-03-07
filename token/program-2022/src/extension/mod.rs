@@ -104,7 +104,7 @@ fn get_extension_indices<V: Extension>(
 ) -> Result<TlvIndices, ProgramError> {
     let type_start: usize = cvt::CVT_nondet_usize();
     let length_start: usize = cvt::CVT_nondet_usize();
-    let value_start: usize = cvt::CVT_nondet_usize();
+    let value_start: usize = cvt::CVT_uninterpreted_usize();
     let tlv_indices =
         TlvIndices {type_start,
             length_start,
