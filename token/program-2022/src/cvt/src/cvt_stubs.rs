@@ -2,7 +2,6 @@ use {
     solana_program::account_info::{AccountInfo},
 };
 
-
 #[allow(non_snake_case)]
 pub fn CVT_assume_impl(_c: bool){
     println!("you should never see this 1!");
@@ -57,12 +56,28 @@ pub fn CVT_nondet_usize_impl() ->  usize {
 
 
 extern "C" {
+    fn CVT_nondet_pointer_usize() -> *mut usize;
+}
+
+static mut CVT_UNINTERPRETED_USIZE: *mut usize = std::ptr::null_mut();
+
+#[allow(non_snake_case)]
+pub fn CVT_uninterpreted_usize_impl() ->  usize {
+    unsafe {
+        if CVT_UNINTERPRETED_USIZE.is_null() {
+            CVT_UNINTERPRETED_USIZE = CVT_nondet_pointer_usize()
+        }
+        *CVT_UNINTERPRETED_USIZE
+    }
+}
+
+extern "C" {
     #[allow(improper_ctypes)]
     fn mk_account_info_unchecked() -> AccountInfo<'static>;
 }
 
 #[allow(non_snake_case)]
-pub fn CVT_mk_account_info_impl() -> AccountInfo<'static> {
+pub fn CVT_nondet_account_info_impl() -> AccountInfo<'static> {
     unsafe {
         return mk_account_info_unchecked();
     }

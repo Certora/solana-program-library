@@ -59,8 +59,14 @@ pub fn CVT_nondet_i64() ->  i64 {
     cvt_stubs::CVT_nondet_i64_impl()
 }
 
+
 #[inline(never)]
 #[allow(non_snake_case)]
-pub fn CVT_mk_account_info() -> AccountInfo<'static> {
-    cvt_stubs::CVT_mk_account_info_impl()
+// Return an arbitrary usize but always the same one
+pub fn CVT_uninterpreted_usize() ->  usize { cvt_stubs::CVT_uninterpreted_usize_impl()}
+
+#[inline(never)]
+#[allow(non_snake_case)]
+pub fn CVT_nondet_account_info() -> AccountInfo<'static> {
+    cvt_stubs::CVT_nondet_account_info_impl()
 }
