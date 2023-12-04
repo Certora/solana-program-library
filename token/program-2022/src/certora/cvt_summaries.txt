@@ -26,6 +26,10 @@
 
 #[type((*i64)(r1+0):num)]
 #[type((*i64)(r1+8):num)]
+^__udivti3$
+
+#[type((*i64)(r1+0):num)]
+#[type((*i64)(r1+8):num)]
 #[type((*i64)(r1+16):num)]
 #[type((*i64)(r1+24):num)]
 #[type((*i64)(r1+32):num)]

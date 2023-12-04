@@ -25,7 +25,7 @@ pub mod processor;
 
 /// Maximum possible fee in basis points is 100%, aka 10_000 basis points
 pub const MAX_FEE_BASIS_POINTS: u16 = 10_000;
-const ONE_IN_BASIS_POINTS: u128 = MAX_FEE_BASIS_POINTS as u128;
+pub const ONE_IN_BASIS_POINTS: u128 = MAX_FEE_BASIS_POINTS as u128;
 
 /// Transfer fee information
 #[repr(C)]
