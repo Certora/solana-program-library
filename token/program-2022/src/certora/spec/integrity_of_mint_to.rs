@@ -4,7 +4,7 @@ use solana_program::program_error::ProgramError;
 use {
     crate::{processor::Processor},
     solana_program::{account_info::AccountInfo},
-    cvt
+    nondet::nondet
 };
 
 /** Rules
@@ -32,9 +32,9 @@ pub fn get_mint_supply(mint_info: &AccountInfo) -> Result<u64, ProgramError> {
 /// Rule to check functional correctness of process_mint_to
 pub fn integrity_of_process_mint_to() {
     // Create environment for process_mint_to
-    let program_id = cvt::nondet();
-    let acc_infos = [cvt::nondet::<AccountInfo>(), cvt::nondet::<AccountInfo>(), cvt::nondet::<AccountInfo>()];
-    let amount = cvt::nondet();
+    let program_id = nondet();
+    let acc_infos = [nondet::<AccountInfo>(), nondet::<AccountInfo>(), nondet::<AccountInfo>()];
+    let amount = nondet();
     cvt::CVT_assume(amount > 0 );
     let mint_info = &acc_infos[0];
     let destination_info = &acc_infos[1];
@@ -57,9 +57,9 @@ pub fn integrity_of_process_mint_to() {
 /// Buggy spec
 pub fn integrity_of_process_mint_to_false() {
     // Create environment for process_mint_to
-    let program_id = cvt::nondet();
-    let acc_infos = [cvt::nondet::<AccountInfo>(), cvt::nondet::<AccountInfo>(), cvt::nondet::<AccountInfo>()];
-    let amount = cvt::nondet();
+    let program_id = nondet();
+    let acc_infos = [nondet::<AccountInfo>(), nondet::<AccountInfo>(), nondet::<AccountInfo>()];
+    let amount = nondet();
     let mint_info = &acc_infos[0];
     let destination_info = &acc_infos[1];
     let destination_amount_before = get_account_amount(destination_info).unwrap();

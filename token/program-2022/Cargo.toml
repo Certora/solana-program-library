@@ -38,7 +38,9 @@ thiserror = "1.0"
 serde = { version = "1.0.192", optional = true }
 serde_with = { version = "3.4.0", optional = true }
 base64 = { version = "0.21.5", optional = true }
-cvt = { path = "../../cvt", features = [] }
+# Added by Certora
+cvt = { path = "../../cvt/cvt" }
+nondet = { path = "../../cvt/nondet" }
 
 [dev-dependencies]
 lazy_static = "1.4.0"

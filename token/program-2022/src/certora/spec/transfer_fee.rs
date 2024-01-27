@@ -1,4 +1,5 @@
 use std::cmp;
+use nondet::nondet;
 use cvt;
 use crate::extension::transfer_fee::{MAX_FEE_BASIS_POINTS, ONE_IN_BASIS_POINTS};
 
@@ -32,11 +33,11 @@ fn ceil_div(numerator: u128, denominator: u128) -> Option<u128> {
 
 #[no_mangle]
 pub fn additivity_of_fee() {
-    let pre_fee_amount_x: u64 = cvt::nondet();
-    let pre_fee_amount_y: u64 = cvt::nondet();
+    let pre_fee_amount_x: u64 = nondet();
+    let pre_fee_amount_y: u64 = nondet();
     let transfer_fee_basic_points = cvt::CVT_nondet_i64() as u128;
     cvt::CVT_assume(transfer_fee_basic_points <= MAX_FEE_BASIS_POINTS as u128);
-    let maximum_fee: u64 = cvt::nondet();
+    let maximum_fee: u64 = nondet();
 
     let pre_fee_amount_xy = pre_fee_amount_x.checked_add(pre_fee_amount_y).unwrap();
     let fee_xy = calculate_fee(pre_fee_amount_xy, transfer_fee_basic_points, maximum_fee).unwrap();
@@ -49,10 +50,10 @@ pub fn additivity_of_fee() {
 
 #[no_mangle]
 pub fn maximum_fee() {
-    let pre_fee_amount_x: u64 = cvt::nondet();
+    let pre_fee_amount_x: u64 = nondet();
     let transfer_fee_basic_points = cvt::CVT_nondet_i64() as u128;
     cvt::CVT_assume(transfer_fee_basic_points <= MAX_FEE_BASIS_POINTS as u128);
-    let maximum_fee: u64 = cvt::nondet();
+    let maximum_fee: u64 = nondet();
     
     let fee  = calculate_fee(pre_fee_amount_x, transfer_fee_basic_points, maximum_fee).unwrap();
     cvt::CVT_assert(fee <= maximum_fee);
@@ -60,11 +61,11 @@ pub fn maximum_fee() {
 
 #[no_mangle]
 pub fn monotonicity_of_fee() {
-    let pre_fee_amount_x: u64 = cvt::nondet();
-    let pre_fee_amount_y: u64 = cvt::nondet();
+    let pre_fee_amount_x: u64 = nondet();
+    let pre_fee_amount_y: u64 = nondet();
     let transfer_fee_basic_points = cvt::CVT_nondet_i64() as u128;
     cvt::CVT_assume(transfer_fee_basic_points <= MAX_FEE_BASIS_POINTS as u128);
-    let maximum_fee: u64 = cvt::nondet();
+    let maximum_fee: u64 = nondet();
 
     cvt::CVT_assume(pre_fee_amount_x > pre_fee_amount_y);
     let fee_x  = calculate_fee(pre_fee_amount_x, transfer_fee_basic_points, maximum_fee).unwrap();
